@@ -1,0 +1,18 @@
+---
+# tasks file for roles/generate_container
+- name: Install necessary packages for Docker
+  apt:
+    name:
+      - docker.io
+      - apt-transport-https
+      - ca-certificates
+    state: present
+    update_cache: yes
+
+- name: Create Nginx container
+  community.docker.docker_container:
+    name: "{{ nginx_container_name }}"
+    image: "{{ nginx_image }}"
+    state: started
+    ports:
+      - "{{ nginx_port }}:80"
