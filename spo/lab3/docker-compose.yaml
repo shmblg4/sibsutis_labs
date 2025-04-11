@@ -1,0 +1,49 @@
+version: "3.8"
+services:
+  dhcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dhcp-image
+    command: ./build/dhcp_server
+    networks:
+      - dhcp-net
+    # Запускаем с привилегиями для порта 67
+    privileged: true
+
+  dhcp-client-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dhcp-image
+    command: ./build/dhcp_client
+    networks:
+      - dhcp-net
+    depends_on:
+      - dhcp-server
+
+  dhcp-client-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dhcp-image
+    command: ./build/dhcp_client
+    networks:
+      - dhcp-net
+    depends_on:
+      - dhcp-server
+
+  dhcp-client-3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dhcp-image
+    command: ./build/dhcp_client
+    networks:
+      - dhcp-net
+    depends_on:
+      - dhcp-server
+
+networks:
+  dhcp-net:
+    driver: bridge
