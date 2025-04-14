@@ -11,63 +11,95 @@
 
 namespace dhcp {
 
-std::string Message::serialize() const {
+std::string DhcpPacket::getMac() const {
     std::stringstream ss;
-    switch (type) {
-        case MessageType::DISCOVER:
-            ss << "DISCOVER|" << mac;
-            break;
-        case MessageType::OFFER:
-            ss << "OFFER|" << ip << "|" << mac;
-            break;
-        case MessageType::REQUEST:
-            ss << "REQUEST|" << ip << "|" << mac;
-            break;
-        case MessageType::ACK:
-            ss << "ACK|" << ip << "|" << mac;
-            break;
+    for (int i = 0; i < 6; ++i) {
+        ss << std::hex << std::setw(2) << std::setfill('0') << (int)chaddr[i];
+        if (i < 5) ss << ":";
     }
     return ss.str();
 }
 
-Message Message::deserialize(const std::string& data, bool& success) {
-    Message msg;
-    success = false;
-
-    if (data.size() > MAX_MSG_SIZE) {
-        return msg;
+void DhcpPacket::setMac(const std::string& mac) {
+    std::stringstream ss(mac);
+    for (int i = 0; i < 6; ++i) {
+        std::string byte;
+        std::getline(ss, byte, ':');
+        chaddr[i] = std::stoi(byte, nullptr, 16);
     }
-
-    std::stringstream ss(data);
-    std::string typeStr, mac, ip;
-
-    std::getline(ss, typeStr, '|');
-    if (typeStr == "DISCOVER") {
-        msg.type = MessageType::DISCOVER;
-        std::getline(ss, mac);
-        msg.mac = mac;
-        if (isValidMac(mac)) {
-            success = true;
-        }
-    } else if (typeStr == "OFFER" || typeStr == "REQUEST" || typeStr == "ACK") {
-        msg.type = (typeStr == "OFFER") ? MessageType::OFFER :
-                   (typeStr == "REQUEST") ? MessageType::REQUEST : MessageType::ACK;
-        std::getline(ss, ip, '|');
-        std::getline(ss, mac);
-        msg.ip = ip;
-        msg.mac = mac;
-        // Проверяем MAC и IP (IP может быть пустым для OFFER/ACK на клиенте)
-        if (isValidMac(mac) && (ip.empty() || std::regex_match(ip, std::regex("\\d+\\.\\d+\\.\\d+\\.\\d+")))) {
-            success = true;
-        }
-    }
-    return msg;
 }
 
-bool Message::isValidMac(const std::string& mac) {
-    // Проверяем формат xx:xx:xx:xx:xx:xx
+std::string DhcpPacket::getIp() const {
+    struct in_addr addr;
+    addr.s_addr = yiaddr;
+    return inet_ntoa(addr);
+}
+
+void DhcpPacket::setIp(const std::string& ip) {
+    yiaddr = inet_addr(ip.c_str());
+}
+
+DhcpMessageType DhcpPacket::getMessageType() const {
+    const uint8_t* ptr = options;
+    if (ptr[0] != 0x63 || ptr[1] != 0x82 || ptr[2] != 0x53 || ptr[3] != 0x63) {
+        return DhcpMessageType::DHCPDISCOVER; // По умолчанию
+    }
+    ptr += 4; // Пропускаем magic cookie
+    while (*ptr != 0xFF) { // 0xFF - конец опций
+        uint8_t opt = *ptr++;
+        uint8_t len = *ptr++;
+        if (opt == 53) { // DHCP Message Type
+            return static_cast<DhcpMessageType>(*ptr);
+        }
+        ptr += len;
+    }
+    return DhcpMessageType::DHCPDISCOVER;
+}
+
+void DhcpPacket::setMessageType(DhcpMessageType type) {
+    // Magic cookie
+    options[0] = 0x63;
+    options[1] = 0x82;
+    options[2] = 0x53;
+    options[3] = 0x63;
+    // Опция 53: DHCP Message Type
+    options[4] = 53;
+    options[5] = 1; // Длина
+    options[6] = static_cast<uint8_t>(type);
+    // Конец опций
+    options[7] = 0xFF;
+}
+
+void DhcpPacket::setLeaseTime(uint32_t leaseTime) {
+    uint8_t* ptr = options + 7; // После Message Type
+    ptr[0] = 51; // IP Address Lease Time
+    ptr[1] = 4;  // Длина
+    ptr[2] = (leaseTime >> 24) & 0xFF;
+    ptr[3] = (leaseTime >> 16) & 0xFF;
+    ptr[4] = (leaseTime >> 8) & 0xFF;
+    ptr[5] = leaseTime & 0xFF;
+    ptr[6] = 0xFF; // Конец опций
+}
+
+bool DhcpPacket::isValidMac(const std::string& mac) {
     std::regex macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
     return std::regex_match(mac, macRegex);
+}
+
+void DhcpPacket::serialize(uint8_t* buffer, size_t& len) const {
+    std::memcpy(buffer, this, sizeof(DhcpPacket));
+    len = sizeof(DhcpPacket);
+}
+
+DhcpPacket DhcpPacket::deserialize(const uint8_t* buffer, size_t len, bool& success) {
+    success = false;
+    DhcpPacket packet = {};
+    if (len < sizeof(DhcpPacket)) return packet;
+    std::memcpy(&packet, buffer, sizeof(DhcpPacket));
+    if (packet.htype != 1 || packet.hlen != 6) return packet;
+    if (packet.op != 1 && packet.op != 2) return packet;
+    success = true;
+    return packet;
 }
 
 IpPool::IpPool() {
@@ -77,10 +109,9 @@ IpPool::IpPool() {
 }
 
 std::string IpPool::allocateIp(const std::string& mac) {
-    // Проверяем, не выделен ли уже IP для этого MAC
     auto it = allocatedIps.find(mac);
     if (it != allocatedIps.end()) {
-        return it->second; // Возвращаем существующий IP
+        return it->second;
     }
 
     for (const auto& ip : ipPool) {
@@ -119,20 +150,17 @@ bool IpPool::isIpInPool(const std::string& ip) const {
 }
 
 DHCPServer::DHCPServer() : running(true) {
-    // Создаем UDP-сокет
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
         throw std::runtime_error("Failed to create socket");
     }
 
-    // Включаем широковещательные сообщения
     int broadcast = 1;
     if (setsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast)) < 0) {
         close(sockfd);
         throw std::runtime_error("Failed to set broadcast option");
     }
 
-    // Устанавливаем таймаут
     struct timeval tv;
     tv.tv_sec = SOCKET_TIMEOUT_SEC;
     tv.tv_usec = 0;
@@ -141,13 +169,11 @@ DHCPServer::DHCPServer() : running(true) {
         throw std::runtime_error("Failed to set socket timeout");
     }
 
-    // Настраиваем адрес сервера
     std::memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_addr.s_addr = INADDR_ANY;
     serverAddr.sin_port = htons(SERVER_PORT);
 
-    // Привязываем сокет
     if (bind(sockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
         close(sockfd);
         throw std::runtime_error("Failed to bind socket: " + std::string(strerror(errno)));
@@ -161,34 +187,34 @@ DHCPServer::~DHCPServer() {
 }
 
 void DHCPServer::start() {
-    char buffer[MAX_MSG_SIZE];
+    uint8_t buffer[MAX_MSG_SIZE];
     struct sockaddr_in clientAddr;
     socklen_t addrLen = sizeof(clientAddr);
 
     while (running) {
-        // Получаем сообщение
         std::memset(buffer, 0, MAX_MSG_SIZE);
-        ssize_t bytesReceived = recvfrom(sockfd, buffer, MAX_MSG_SIZE - 1, 0,
+        ssize_t bytesReceived = recvfrom(sockfd, buffer, MAX_MSG_SIZE, 0,
                                         (struct sockaddr*)&clientAddr, &addrLen);
         if (bytesReceived < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                continue; // Таймаут, проверяем running
+                continue;
             }
-            log("Error receiving message: " + std::string(strerror(errno)));
+            log("Error receiving packet: " + std::string(strerror(errno)));
             continue;
         }
 
-        buffer[bytesReceived] = '\0';
         bool success = false;
-        Message msg = Message::deserialize(buffer, success);
+        DhcpPacket packet = DhcpPacket::deserialize(buffer, bytesReceived, success);
         if (!success) {
-            log("Invalid message received from " + std::string(inet_ntoa(clientAddr.sin_addr)));
+            log("Invalid packet received from " + std::string(inet_ntoa(clientAddr.sin_addr)));
             continue;
         }
 
-        log("Received " + std::string(msg.type == MessageType::DISCOVER ? "DISCOVER" : "REQUEST") +
-            " from MAC: " + msg.mac + " at " + inet_ntoa(clientAddr.sin_addr));
-        handleMessage(msg, clientAddr);
+        std::string mac = packet.getMac();
+        auto msgType = packet.getMessageType();
+        log("Received " + std::string(msgType == DhcpMessageType::DHCPDISCOVER ? "DHCPDISCOVER" : "DHCPREQUEST") +
+            " from MAC: " + mac + " at " + inet_ntoa(clientAddr.sin_addr));
+        handlePacket(packet, clientAddr);
     }
 
     log("DHCP Server shutting down");
@@ -207,73 +233,87 @@ bool DHCPServer::shouldStop() const {
     return !running;
 }
 
-void DHCPServer::handleMessage(const Message& msg, const struct sockaddr_in& clientAddr) {
-    Message response;
-    if (msg.type == MessageType::DISCOVER) {
-        response = handleDiscover(msg);
-    } else if (msg.type == MessageType::REQUEST) {
-        response = handleRequest(msg);
+void DHCPServer::handlePacket(const DhcpPacket& packet, const struct sockaddr_in& clientAddr) {
+    DhcpPacket response;
+    auto msgType = packet.getMessageType();
+    if (msgType == DhcpMessageType::DHCPDISCOVER) {
+        response = handleDiscover(packet);
+    } else if (msgType == DhcpMessageType::DHCPREQUEST) {
+        response = handleRequest(packet);
     } else {
-        log("Ignoring unknown message type from MAC: " + msg.mac);
+        log("Ignoring unknown message type from MAC: " + packet.getMac());
         return;
     }
 
-    if (!response.ip.empty()) {
-        sendMessage(response, clientAddr);
+    if (!response.getIp().empty()) {
+        sendPacket(response, clientAddr);
     } else {
-        log("No response sent for MAC: " + msg.mac + " (no IP available)");
+        log("No response sent for MAC: " + packet.getMac() + " (no IP available)");
     }
 }
 
-Message DHCPServer::handleDiscover(const Message& msg) {
-    Message response;
-    response.type = MessageType::OFFER;
-    response.mac = msg.mac;
-    response.ip = ipPool.allocateIp(msg.mac);
+DhcpPacket DHCPServer::handleDiscover(const DhcpPacket& packet) {
+    DhcpPacket response = {};
+    response.op = 2; // BOOTREPLY
+    response.htype = 1;
+    response.hlen = 6;
+    response.xid = packet.xid;
+    response.setMac(packet.getMac());
+    response.setMessageType(DhcpMessageType::DHCPOFFER);
+    response.setIp(ipPool.allocateIp(packet.getMac()));
+    response.setLeaseTime(DEFAULT_LEASE_TIME);
 
-    if (response.ip.empty()) {
-        log("No available IPs for MAC: " + msg.mac);
+    if (response.getIp().empty()) {
+        log("No available IPs for MAC: " + packet.getMac());
     } else {
-        log("Offering IP: " + response.ip + " to MAC: " + msg.mac);
+        log("Offering IP: " + response.getIp() + " to MAC: " + packet.getMac());
     }
 
     return response;
 }
 
-Message DHCPServer::handleRequest(const Message& msg) {
-    Message response;
-    response.type = MessageType::ACK;
-    response.mac = msg.mac;
-    response.ip = msg.ip;
+DhcpPacket DHCPServer::handleRequest(const DhcpPacket& packet) {
+    DhcpPacket response = {};
+    response.op = 2; // BOOTREPLY
+    response.htype = 1;
+    response.hlen = 6;
+    response.xid = packet.xid;
+    response.setMac(packet.getMac());
+    response.setMessageType(DhcpMessageType::DHCPACK);
+    response.setIp(packet.getIp());
 
-    if (!ipPool.isIpInPool(msg.ip)) {
-        log("Requested IP " + msg.ip + " is not in pool for MAC: " + msg.mac);
-        response.ip = "";
+    if (!ipPool.isIpInPool(packet.getIp())) {
+        log("Requested IP " + packet.getIp() + " is not in pool for MAC: " + packet.getMac());
+        response.setIp("");
         return response;
     }
 
-    if (ipPool.confirmIp(msg.mac, msg.ip)) {
-        log("Confirmed IP: " + msg.ip + " for MAC: " + msg.mac);
+    if (ipPool.confirmIp(packet.getMac(), packet.getIp())) {
+        log("Confirmed IP: " + packet.getIp() + " for MAC: " + packet.getMac());
+        response.setLeaseTime(DEFAULT_LEASE_TIME);
     } else {
-        log("Invalid REQUEST for IP: " + msg.ip + ", MAC: " + msg.mac);
-        response.ip = "";
+        log("Invalid REQUEST for IP: " + packet.getIp() + ", MAC: " + packet.getMac());
+        response.setIp("");
     }
 
     return response;
 }
 
-void DHCPServer::sendMessage(const Message& msg, const struct sockaddr_in& clientAddr) {
-    std::string data = msg.serialize();
+void DHCPServer::sendPacket(const DhcpPacket& packet, const struct sockaddr_in& clientAddr) {
+    uint8_t buffer[MAX_MSG_SIZE];
+    size_t len = 0;
+    packet.serialize(buffer, len);
+
     struct sockaddr_in destAddr = clientAddr;
     destAddr.sin_port = htons(CLIENT_PORT);
 
-    ssize_t bytesSent = sendto(sockfd, data.c_str(), data.size(), 0,
+    ssize_t bytesSent = sendto(sockfd, buffer, len, 0,
                                (struct sockaddr*)&destAddr, sizeof(destAddr));
     if (bytesSent < 0) {
-        log("Error sending message to MAC: " + msg.mac + ": " + strerror(errno));
+        log("Error sending packet to MAC: " + packet.getMac() + ": " + strerror(errno));
     } else {
-        log("Sent " + std::string(msg.type == MessageType::OFFER ? "OFFER" : "ACK") +
-            " with IP: " + msg.ip + " to MAC: " + msg.mac);
+        log("Sent " + std::string(packet.getMessageType() == DhcpMessageType::DHCPOFFER ? "DHCPOFFER" : "DHCPACK") +
+            " with IP: " + packet.getIp() + " to MAC: " + packet.getMac());
     }
 }
 
