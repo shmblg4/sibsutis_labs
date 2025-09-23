@@ -1,0 +1,60 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build cryptography_lib",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-Wall",
+                "-Wextra",
+                "-g3",
+                "-I",
+                "${workspaceFolder}/cryptography_lib",
+                "${workspaceFolder}/main.cpp",
+                "${workspaceFolder}/cryptography_lib/Functions.cpp",
+                "${workspaceFolder}/cryptography_lib/Euclid.cpp",
+                "${workspaceFolder}/cryptography_lib/small_big_step.cpp",
+                "${workspaceFolder}/cryptography_lib/algorithm_small_big_step.cpp",
+                "${workspaceFolder}/cryptography_lib/open_key_system.cpp",
+                "-o",
+                "${workspaceFolder}/build/main"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
+            "label": "Build main.cpp",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-Wall",
+                "-Wextra",
+                "-g3",
+                "-I",
+                "${workspaceFolder}/cryptography_lib",
+                "${workspaceFolder}/main.cpp",
+                "-o",
+                "${workspaceFolder}/build/main"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        }
+    ]
+}
