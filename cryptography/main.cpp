@@ -1,7 +1,10 @@
 #include <cryptography.hpp>
 
 int main() {
-    Euclid();
-    small_big_step();
+    FileWorker file;
+    ShamirCoder coder = ShamirCoder();
+    std::vector<byte_t> bytes = file.read("file.txt");
+    bytes = coder.worker(bytes);
+    file.write(bytes, "output.txt");
     return 0;
 }

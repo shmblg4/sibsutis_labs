@@ -64,6 +64,11 @@
         "thread": "cpp",
         "cinttypes": "cpp",
         "typeinfo": "cpp",
-        "variant": "cpp"
-    }
+        "variant": "cpp",
+        "fstream": "cpp"
+    },
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.configureOnOpen": true,
+    "cmake.buildBeforeRun": true,
+    "cmake.generator": "Unix Makefiles"
 }

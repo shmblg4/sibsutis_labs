@@ -4,6 +4,16 @@ int ferm_test(int n) {
     return pow_mod(2, n - 1, n) == 1;
 }
 
+int gen_prime() {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    int p = gen() % 10000;
+    while (!ferm_test(p)) {
+        p = gen() % 10000;
+    }
+    return p;
+}
+
 int Euler_algorithm(int n) {
     if (!ferm_test(n)) {
         return 0;

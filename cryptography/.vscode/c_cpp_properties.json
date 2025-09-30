@@ -4,7 +4,6 @@
             "name": "Linux",
             "includePath": [
                 "${default}",
-                "${workspaceFolder}/lab1",
                 "${workspaceFolder}",
                 "${workspaceFolder}/cryptography_lib"
             ],
