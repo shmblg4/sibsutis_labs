@@ -5,7 +5,7 @@
             "name": "Debug with CMake",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${command:cmake.launchTargetPath}",
+            "program": "${workspaceFolder}/cryptography",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
