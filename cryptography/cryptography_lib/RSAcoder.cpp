@@ -20,7 +20,6 @@ std::vector<ll> RSAcoder::decode(std::vector<ll> data) {
 void RSAcoder::configure() {
     p = gen_prime();
     q = gen_prime();
-    // Убеждаемся, что p и q разные
     while (p == q) {
         q = gen_prime();
     }
@@ -29,21 +28,18 @@ void RSAcoder::configure() {
     phi = (p - 1) * (q - 1);
     gen_keys();
 
-    // Проверяем корректность ключей
     while ((c * d) % phi != 1) {
         gen_keys();
     }
 }
 
 void RSAcoder::gen_keys() {
-    // Генерируем d в диапазоне [2, phi-1]
     d = gen_random();
     while (d < 2 || d >= phi || gcd(d, phi) != 1) {
         d = gen_random();
     }
 
-    // Вычисляем обратный элемент c с помощью расширенного алгоритма Евклида
     std::vector<ll> res = algorithm_Euclid(phi, d);
     c = res[2];
-    c = (c % phi + phi) % phi; // Приведение к положительному остатку
+    c = (c % phi + phi) % phi;
 }

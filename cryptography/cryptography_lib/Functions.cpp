@@ -9,7 +9,7 @@ ll ferm_test(ll n) {
 ll gen_prime() {
     std::random_device rd;
     std::mt19937 gen(rd());
-    ll p = (gen() % 120) + 5; // Генерируем числа от 5 до 124
+    ll p = (gen() % 120) + 5;
     while (!ferm_test(p)) {
         p = (gen() % 120) + 5;
     }
@@ -19,7 +19,7 @@ ll gen_prime() {
 ll gen_random() {
     std::random_device rd;
     std::mt19937 gen(rd());
-    return (gen() % 1000) + 2; // Генерируем числа от 2 до 1001
+    return (gen() % 1000) + 2;
 }
 
 ll gcd(ll a, ll b) {

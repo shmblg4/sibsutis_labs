@@ -53,7 +53,7 @@ private:
     ll n;
     ll phi;
     ll d;
-    ll c; // Изменено с double на ll
+    ll c;
 
     void configure();
     void gen_keys();
