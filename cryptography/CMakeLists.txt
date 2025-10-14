@@ -4,6 +4,8 @@ project(cryptography)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
+
 file(GLOB SRC "cryptography_lib/*.cpp")
 
 add_executable(cryptography

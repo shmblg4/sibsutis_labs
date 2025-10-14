@@ -9,45 +9,54 @@
 #include <random>
 #include <vector>
 
-typedef struct Step {
-    int index;
-    int val;
-} Step;
-
-typedef struct User {
-    int secret_key;
-    int open_key;
-} User;
+#define BMP_H_SIZE 54
 
 typedef unsigned char byte_t;
+typedef long long ll;
 
-int pow_mod(int base, int exp, int mod);
-int ferm_test(int n);
+ll pow_mod(ll base, ll exp, ll mod);
+ll ferm_test(ll n);
 void Euclid();
-std::vector<int> algorithm_Euclid(int a, int b);
-void disp_Euclid_result(std::vector<int> result, int a, int b);
-void small_big_step();
-std::vector<int> algorithm_small_big_step(int a, int y, int p);
-std::vector<int> open_key_system(User &user1, User &user2);
 int Euler_algorithm(int n);
-int gen_prime();
+ll gen_prime();
+ll gcd(ll a, ll b);
+std::vector<ll> algorithm_Euclid(ll a, ll b);
+ll gen_random();
 
-class FileWorker {
+class BMPworker {
 public:
-    std::vector<byte_t> read(std::string filename);
-    void write(std::vector<byte_t> &bytes, std::string filename);
-};
-
-class ShamirCoder {
-public:
-    ShamirCoder();
-    std::vector<byte_t> worker(std::vector<byte_t> &bytes);
+    std::vector<ll> read(std::string filename);
+    void write(std::vector<ll> data, std::string filename);
 
 private:
-    int _P;
-    int u1_keys[2]; // [Ca, Da]
-    int u2_keys[2]; // [Cb, Db]
+    std::vector<ll> header;
+};
 
+class Fileworker {
+public:
+    std::vector<ll> read(std::string filename);
+    void write(std::vector<ll> data, std::string filename);
+};
+
+class RSAcoder {
+public:
+    RSAcoder() {
+        configure();
+    }
+
+    std::vector<ll> encode(std::vector<ll> data);
+    std::vector<ll> decode(std::vector<ll> data);
+
+private:
+    ll p;
+    ll q;
+    ll n;
+    ll phi;
+    ll d;
+    ll c; // Изменено с double на ll
+
+    void configure();
     void gen_keys();
 };
+
 #endif
