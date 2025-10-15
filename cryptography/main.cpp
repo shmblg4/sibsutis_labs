@@ -14,13 +14,13 @@ int main() {
 
         std::cout << "Кодируем данные..." << std::endl;
         std::vector<ll> encoded_data = coder.encode(data);
-        fileworker.write(encoded_data, "encoded_" + filename);
+        fileworker.write(encoded_data, "encoded_" + filename, 1);
         std::cout << "Закодированные данные сохранены в encoded_text.txt"
                   << std::endl;
 
         std::cout << "Декодируем данные..." << std::endl;
         std::vector<ll> decoded_data = coder.decode(encoded_data);
-        fileworker.write(decoded_data, "decoded_" + filename);
+        fileworker.write(decoded_data, "decoded_" + filename, 2);
         std::cout << "Декодированные данные сохранены в decoded_text.txt"
                   << std::endl;
 

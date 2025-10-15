@@ -35,7 +35,7 @@ private:
 class Fileworker {
 public:
     std::vector<ll> read(std::string filename);
-    void write(std::vector<ll> data, std::string filename);
+    void write(std::vector<ll> data, std::string filename, int mode);
 };
 
 class RSAcoder {

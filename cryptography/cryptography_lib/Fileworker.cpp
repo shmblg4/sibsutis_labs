@@ -14,13 +14,22 @@ std::vector<ll> Fileworker::read(std::string filename) {
     return data;
 }
 
-void Fileworker::write(std::vector<ll> data, std::string filename) {
+void Fileworker::write(std::vector<ll> data, std::string filename, int mode) {
     FILE *file = fopen(filename.c_str(), "wb");
     if (!file) {
         throw std::runtime_error("Cannot create file: " + filename);
     }
-    for (auto val : data) {
-        fwrite(&val, sizeof(ll), 1, file);
+    if (mode == 1) {
+        for (auto val : data) {
+            fwrite(&val, sizeof(ll), 1, file);
+        }
+    } else if (mode == 2) {
+        for (auto val : data) {
+            fwrite(reinterpret_cast<char *>(&val), sizeof(char), 1, file);
+        }
+    } else {
+        fclose(file);
+        return;
     }
     fclose(file);
 }
