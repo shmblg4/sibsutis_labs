@@ -38,14 +38,17 @@ public:
     void write(std::vector<ll> data, std::string filename, int mode);
 };
 
-class RSAcoder {
+class RSAworker {
 public:
-    RSAcoder() {
+    RSAworker() {
         configure();
     }
 
     std::vector<ll> encode(std::vector<ll> data);
     std::vector<ll> decode(std::vector<ll> data);
+
+    ll sign(std::vector<ll> data);
+    void verify(std::vector<ll> data, ll s);
 
 private:
     ll p;
@@ -57,6 +60,8 @@ private:
 
     void configure();
     void gen_keys();
+
+    ll Hash(std::vector<ll> data);
 };
 
 class VernamCoder {
