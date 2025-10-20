@@ -59,4 +59,20 @@ private:
     void gen_keys();
 };
 
+class VernamCoder {
+public:
+    VernamCoder(int data_size) {
+        this->data_size = data_size;
+        configure();
+    }
+
+    std::vector<ll> encode(std::vector<ll> data);
+    std::vector<ll> decode(std::vector<ll> data);
+
+private:
+    int data_size = 0;
+    void configure();
+    std::vector<ll> key;
+};
+
 #endif

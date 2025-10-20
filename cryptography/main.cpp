@@ -3,7 +3,6 @@
 
 int main() {
     try {
-        RSAcoder coder;
         Fileworker fileworker;
         std::string filename;
         std::cin >> filename;
@@ -11,6 +10,8 @@ int main() {
         std::cout << "Читаем файл..." << std::endl;
         std::vector<ll> data = fileworker.read(filename);
         std::cout << "Прочитано байт: " << data.size() << std::endl;
+
+        VernamCoder coder(data.size());
 
         std::cout << "Кодируем данные..." << std::endl;
         std::vector<ll> encoded_data = coder.encode(data);
