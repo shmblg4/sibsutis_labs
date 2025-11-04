@@ -79,3 +79,12 @@ std::vector<ll> algorithm_Euclid(ll a, ll b) {
     else
         return U;
 }
+
+std::size_t computeHash(const std::vector<ll> &vec) {
+    std::size_t seed = vec.size();
+    for (const auto &element : vec) {
+        seed ^=
+            std::hash<ll>{}(element) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    }
+    return seed;
+}

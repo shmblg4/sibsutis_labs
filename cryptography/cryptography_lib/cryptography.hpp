@@ -5,6 +5,7 @@
 #include <cmath>
 #include <exception>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <random>
 #include <vector>
@@ -22,6 +23,7 @@ ll gen_prime();
 ll gcd(ll a, ll b);
 std::vector<ll> algorithm_Euclid(ll a, ll b);
 ll gen_random();
+std::size_t computeHash(const std::vector<ll> &vec);
 
 class BMPworker {
 public:
@@ -78,6 +80,20 @@ private:
     int data_size = 0;
     void configure();
     std::vector<ll> key;
+};
+
+class ElGamalWorker {
+public:
+    ElGamalWorker() {
+        configure();
+    }
+
+    ll sign(std::vector<ll> data);
+    void verify(std::vector<ll> data, ll s);
+
+private:
+    void configure();
+    ll p, q, g, x, y;
 };
 
 #endif
